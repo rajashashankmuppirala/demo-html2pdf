@@ -1,8 +1,6 @@
 package com.shashank.demohtml2pdf.controller;
 
 import com.itextpdf.html2pdf.HtmlConverter;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
