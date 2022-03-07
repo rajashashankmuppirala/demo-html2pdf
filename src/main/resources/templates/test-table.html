@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <style>
+        #rows {
+            font-family: Arial, Helvetica, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        #rows td, #rows th {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+
+        #rows tr:nth-child(even){background-color: #f2f2f2;}
+
+        #rows tr:hover {background-color: #ddd;}
+
+        #rows th {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            text-align: left;
+            background-color: #04AA6D;
+            color: white;
+        }
+    </style>
+</head>
+<table id="rows">
+    <thead>
+    <tr>
+        <th> Header1 </th>
+        <th> Header2 </th>
+        <th> Header3 </th>
+        <th> Header4 </th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:if="${rows.empty}">
+        <td colspan="2"> No Books Available </td>
+    </tr>
+    <tr th:each="row : ${rows}">
+        <td><span th:text="${row.col1}"></span></td>
+        <td><span th:text="${row.col2}"></span></td>
+        <td><span th:text="${row.col3}"></span></td>
+        <td><span th:text="${row.col4}"></span></td>
+    </tr>
+    </tbody>
+</table>
+
+<div id="charts">
+    <span>This is a test chart</span>
+    <img th:src="${chart}">
+
+</div>
+</html>
