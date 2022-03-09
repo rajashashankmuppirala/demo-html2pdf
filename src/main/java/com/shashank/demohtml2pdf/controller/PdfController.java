@@ -9,16 +9,17 @@ import com.gargoylesoftware.htmlunit.javascript.host.Window;
 import com.gargoylesoftware.htmlunit.javascript.host.html.HTMLCanvasElement;
 import com.itextpdf.html2pdf.HtmlConverter;
 import com.shashank.demohtml2pdf.model.Row;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.WebContext;
+import org.xhtmlrenderer.pdf.ITextRenderer;
 
 
 import javax.servlet.ServletContext;
@@ -27,7 +28,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.util.*;
 
-@Controller
+@RestController
 public class PdfController {
 
     @Autowired
@@ -38,32 +39,49 @@ public class PdfController {
 
     @GetMapping("/download")
     public ResponseEntity<?> downloadTransformedPdf() throws IOException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        HtmlConverter.convertToPdf(getClass().getClassLoader().getResourceAsStream("test.html"),
-                outputStream);
+        ByteArrayOutputStream outputStream = null;
+        try {
+            outputStream = new ByteArrayOutputStream();
+            HtmlConverter.convertToPdf(getClass().getClassLoader().getResourceAsStream("test.html"),
+                    outputStream);
 
-        byte[] bytes = outputStream.toByteArray();
+            byte[] bytes = outputStream.toByteArray();
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=test.pdf")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(bytes);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=test.pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(bytes);
+        } finally {
+            if(outputStream != null){
+                outputStream.close();
+                outputStream.flush();
+            }
+
+        }
     }
 
 
     @GetMapping(value = "/pdfView", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<?> viewTransformedPdf() throws IOException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        HtmlConverter.convertToPdf(getClass().getClassLoader().getResourceAsStream("test.html"),
-                outputStream);
+        ByteArrayOutputStream outputStream = null;
+        try {
+            outputStream = new ByteArrayOutputStream();
+            HtmlConverter.convertToPdf(getClass().getClassLoader().getResourceAsStream("test.html"),
+                    outputStream);
 
-        byte[] bytes = outputStream.toByteArray();
+            byte[] bytes = outputStream.toByteArray();
 
-        return ResponseEntity.ok()
-                .body(bytes);
+            return ResponseEntity.ok()
+                    .body(bytes);
+        }finally {
+            if(outputStream != null){
+                outputStream.close();
+                outputStream.flush();
+            }
+        }
     }
 
-    @GetMapping(value = "/pdf/table", produces = MediaType.APPLICATION_PDF_VALUE)
+    @GetMapping(value = "/pdf/table/itext", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<?> viewTransformedTablePdf(HttpServletRequest request, HttpServletResponse response) throws IOException {
         ByteArrayOutputStream outputStream = null;
 
@@ -90,8 +108,48 @@ public class PdfController {
             return ResponseEntity.ok()
                     .body(bytes);
 
-        }finally{
-            outputStream.flush();
+        }finally {
+            if(outputStream != null){
+                outputStream.close();
+                outputStream.flush();
+            }
+        }
+    }
+
+    @GetMapping(value = "/pdf/table/flyingSaucer", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<?> viewTransformedTablePdfFlyingSaucer(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        ByteArrayOutputStream outputStream = null;
+
+        try {
+            outputStream = new ByteArrayOutputStream();
+            List<Row> rows = new ArrayList<>();
+            rows.add(Row.builder().col1("col11").col2("col12").col3("col13").col4("col14").build());
+            rows.add(Row.builder().col1("col21").col2("col22").col3("col23").col4("col24").build());
+            rows.add(Row.builder().col1("col21").col2("col22").col3("col33").col4("col34").build());
+            rows.add(Row.builder().col1("col21").col2("col22").col3("col43").col4("col44").build());
+
+            WebContext context = new WebContext(request, response, servletContext);
+            String chart = getChart(context);
+
+            context.setVariable("rows", rows);
+            context.setVariable("chart",chart );
+            String rowsHtml = templateEngine.process("test-table", context);
+
+            ITextRenderer pdfRenderer = new ITextRenderer();
+            pdfRenderer.setDocumentFromString(createXHtml(rowsHtml));
+            pdfRenderer.layout();
+            pdfRenderer.createPDF(outputStream);
+
+            byte[] bytes = outputStream.toByteArray();
+
+            return ResponseEntity.ok()
+                    .body(bytes);
+
+        }finally {
+            if(outputStream != null){
+                outputStream.close();
+                outputStream.flush();
+            }
         }
     }
 
@@ -120,7 +178,16 @@ public class PdfController {
             }
             return chartPng;
         }finally {
-            webClient.close();
+            if(null!= webClient){
+                webClient.close();
+            }
+
         }
+    }
+
+    private String createXHtml(String inputHTML) {
+        Document document = Jsoup.parse(inputHTML);
+        document.outputSettings().syntax(Document.OutputSettings.Syntax.xml);
+        return document.html();
     }
 }
