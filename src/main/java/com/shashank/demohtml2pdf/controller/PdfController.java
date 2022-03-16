@@ -16,7 +16,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.WebContext;
 import org.xhtmlrenderer.pdf.ITextRenderer;
@@ -29,6 +31,7 @@ import java.io.*;
 import java.util.*;
 
 @RestController
+@RequestMapping("/pdf")
 public class PdfController {
 
     @Autowired
@@ -61,7 +64,7 @@ public class PdfController {
     }
 
 
-    @GetMapping(value = "/pdfView", produces = MediaType.APPLICATION_PDF_VALUE)
+    @GetMapping(value = "/view", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<?> viewTransformedPdf() throws IOException {
         ByteArrayOutputStream outputStream = null;
         try {
@@ -81,7 +84,7 @@ public class PdfController {
         }
     }
 
-    @GetMapping(value = "/pdf/table/itext", produces = MediaType.APPLICATION_PDF_VALUE)
+    @GetMapping(value = "/table/itext", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<?> viewTransformedTablePdf(HttpServletRequest request, HttpServletResponse response) throws IOException {
         ByteArrayOutputStream outputStream = null;
 
@@ -116,7 +119,7 @@ public class PdfController {
         }
     }
 
-    @GetMapping(value = "/pdf/table/flyingSaucer", produces = MediaType.APPLICATION_PDF_VALUE)
+    @GetMapping(value = "/table/flyingSaucer", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<?> viewTransformedTablePdfFlyingSaucer(HttpServletRequest request, HttpServletResponse response) throws IOException {
         ByteArrayOutputStream outputStream = null;
 
@@ -145,6 +148,39 @@ public class PdfController {
             return ResponseEntity.ok()
                     .body(bytes);
 
+        }finally {
+            if(outputStream != null){
+                outputStream.close();
+                outputStream.flush();
+            }
+        }
+    }
+
+    @GetMapping(value = "/image/view", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<?> viewTransformedPdfWithImg(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        ByteArrayOutputStream outputStream = null;
+        try {
+            outputStream = new ByteArrayOutputStream();
+
+            WebContext context = new WebContext(request, response, servletContext);
+            String chart = getChart(context);
+            String baseUrl = ServletUriComponentsBuilder.fromRequestUri(request)
+                    .replacePath(null)
+                    .build()
+                    .toUriString();
+            context.setVariable("base_url", baseUrl);
+            context.setVariable("chart",chart );
+            String rowsHtml = templateEngine.process("test-image", context);
+
+            ITextRenderer pdfRenderer = new ITextRenderer();
+            pdfRenderer.setDocumentFromString(createXHtml(rowsHtml));
+            pdfRenderer.layout();
+            pdfRenderer.createPDF(outputStream);
+
+            byte[] bytes = outputStream.toByteArray();
+
+            return ResponseEntity.ok()
+                    .body(bytes);
         }finally {
             if(outputStream != null){
                 outputStream.close();
